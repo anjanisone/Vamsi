@@ -8,7 +8,7 @@ import os
 import csv
 import io
 
-def main(file_paths: list):
+def copy_files_batch(payload: list):
     server = "fsdevca1.headquarters.newcenturyhealth.com"
     share = "QAFileShare"
     username = "DOMAIN\\yourusername"
@@ -27,7 +27,11 @@ def main(file_paths: list):
     log_rows = []
     timestamp_now = datetime.utcnow().isoformat()
 
-    for path in file_paths:
+    for item in payload:
+        path = item.get("full_path")
+        auth_id = item.get("auth_request_id")
+        annotation_id = item.get("annotation_id")
+
         try:
             file_open = Open(tree, path, access=FilePipePrinterAccessMask.GENERIC_READ,
                              options=CreateOptions.FILE_NON_DIRECTORY_FILE,
@@ -39,15 +43,15 @@ def main(file_paths: list):
             blob_name = os.path.basename(path)
             container_client.upload_blob(name=blob_name, data=data, overwrite=True)
 
-            log_rows.append([blob_name, path, timestamp_now])
+            log_rows.append([blob_name, path, auth_id, annotation_id, timestamp_now])
         except Exception as e:
             print(f"Error copying {path}: {e}")
 
-    # Write audit log
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(['file_name', 'full_path', 'uploaded_at'])
+    writer.writerow(['file_name', 'full_path', 'auth_request_id', 'annotation_id', 'uploaded_at'])
     writer.writerows(log_rows)
+
     audit_blob_name = f"audit-logs/uploaded_{timestamp_now.replace(':', '_')}.csv"
     container_client.upload_blob(audit_blob_name, output.getvalue(), overwrite=True)
 

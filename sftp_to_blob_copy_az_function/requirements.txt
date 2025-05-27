@@ -1,4 +1,4 @@
 azure-functions
+azure-durable-functions
 azure-storage-blob
-azure-functions-durable
 smbprotocol
