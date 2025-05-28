@@ -6,6 +6,9 @@ from smbprotocol.connection import Connection
 from smbprotocol.session import Session
 from smbprotocol.tree import TreeConnect
 from smbprotocol.open import Open, CreateOptions, ShareAccess, FilePipePrinterAccessMask
+from smbprotocol.structure import ImpersonationLevel
+from smbprotocol.open import CreateDisposition
+
 
 def copy_files_from_csv(input_csv_path: str, output_dir: str):
     server = "fsdevca1.headquarters.newcenturyhealth.com"
@@ -50,12 +53,15 @@ def copy_files_from_csv(input_csv_path: str, output_dir: str):
                     print(f"Unknown share in path: {path}")
                     continue
 
-                file_open = Open(tree, relative_path,
-                            FilePipePrinterAccessMask.GENERIC_READ,
-                            FilePipePrinterAccessMask.GENERIC_READ,
-                            ShareAccess.FILE_SHARE_READ,
-                            CreateOptions.FILE_NON_DIRECTORY_FILE)
-                file_open.create()
+                file_open = Open(tree, relative_path)
+                file_open.create(
+                    impersonation_level=ImpersonationLevel.Impersonation,
+                    desired_access=FilePipePrinterAccessMask.GENERIC_READ,
+                    file_attributes=0,
+                    share_access=ShareAccess.FILE_SHARE_READ,
+                    create_disposition=CreateDisposition.FILE_OPEN,
+                    create_options=CreateOptions.FILE_NON_DIRECTORY_FILE
+                )
                 data = file_open.read(0, file_open.query_info().end_of_file)
                 file_open.close()
 

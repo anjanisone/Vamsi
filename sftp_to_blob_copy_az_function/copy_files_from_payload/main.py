@@ -4,6 +4,8 @@ from smbprotocol.tree import TreeConnect
 from smbprotocol.open import Open, CreateOptions, ShareAccess, FilePipePrinterAccessMask
 from azure.storage.blob import BlobServiceClient
 from datetime import datetime
+from smbprotocol.structure import ImpersonationLevel
+from smbprotocol.open import CreateDisposition
 import os
 import csv
 import io
@@ -53,10 +55,13 @@ def copy_files_batch(payload: list):
 
             file_open = Open(tree, relative_path)
             file_open.create(
+                impersonation_level=ImpersonationLevel.Impersonation,
                 desired_access=FilePipePrinterAccessMask.GENERIC_READ,
+                file_attributes=0,
                 share_access=ShareAccess.FILE_SHARE_READ,
+                create_disposition=CreateDisposition.FILE_OPEN,
                 create_options=CreateOptions.FILE_NON_DIRECTORY_FILE
-                )
+            )
             data = file_open.read(0, file_open.query_info().end_of_file)
             file_open.close()
 
