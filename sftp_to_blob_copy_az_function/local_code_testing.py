@@ -50,9 +50,11 @@ def copy_files_from_csv(input_csv_path: str, output_dir: str):
                     print(f"Unknown share in path: {path}")
                     continue
 
-                file_open = Open(tree, relative_path, access=FilePipePrinterAccessMask.GENERIC_READ,
-                                 options=CreateOptions.FILE_NON_DIRECTORY_FILE,
-                                 share=ShareAccess.FILE_SHARE_READ)
+                file_open = Open(tree, relative_path,
+                            FilePipePrinterAccessMask.GENERIC_READ,
+                            FilePipePrinterAccessMask.GENERIC_READ,
+                            ShareAccess.FILE_SHARE_READ,
+                            CreateOptions.FILE_NON_DIRECTORY_FILE)
                 file_open.create()
                 data = file_open.read(0, file_open.query_info().end_of_file)
                 file_open.close()
