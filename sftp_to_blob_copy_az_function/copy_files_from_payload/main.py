@@ -49,11 +49,14 @@ def copy_files_batch(payload: list):
             else:
                 print(f"Unknown share in path: {path}")
                 continue
+            
 
-            file_open = Open(tree, relative_path, access=FilePipePrinterAccessMask.GENERIC_READ,
-                             options=CreateOptions.FILE_NON_DIRECTORY_FILE,
-                             share=ShareAccess.FILE_SHARE_READ)
-            file_open.create()
+            file_open = Open(tree, relative_path)
+            file_open.create(
+                desired_access=FilePipePrinterAccessMask.GENERIC_READ,
+                share_access=ShareAccess.FILE_SHARE_READ,
+                create_options=CreateOptions.FILE_NON_DIRECTORY_FILE
+                )
             data = file_open.read(0, file_open.query_info().end_of_file)
             file_open.close()
 
