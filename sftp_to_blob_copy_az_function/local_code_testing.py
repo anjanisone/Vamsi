@@ -63,7 +63,7 @@ def copy_files_from_csv(input_csv_path: str, output_dir: str):
                     create_disposition=CreateDisposition.FILE_OPEN,
                     create_options=CreateOptions.FILE_NON_DIRECTORY_FILE
                 )
-                data = file_open.read(0, file_open.query_info().end_of_file)
+                data = file_open.read(0, file_open.get_attributes().end_of_file)
                 file_open.close()
 
                 file_name = os.path.basename(path)
