@@ -39,6 +39,7 @@ def copy_files_from_csv(input_csv_path: str, output_dir: str):
         reader = csv.DictReader(csvfile)
         for row in reader:
             path = row["full_path"]
+            name = path.split("\\")[-1]
             auth_id = row["auth_request_id"]
             annotation_id = row["annotation_id"]
 
