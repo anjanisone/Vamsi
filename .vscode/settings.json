@@ -1,0 +1,9 @@
+{
+    "azureFunctions.deploySubpath": "sftp_to_blob_copy_az_function",
+    "azureFunctions.scmDoBuildDuringDeployment": true,
+    "azureFunctions.pythonVenv": "venv",
+    "azureFunctions.projectLanguage": "Python",
+    "azureFunctions.pythonversion": "3.10",
+    "azureFunctions.projectRuntime": "~4",
+    "debug.internalConsoleOptions": "neverOpen"
+}
