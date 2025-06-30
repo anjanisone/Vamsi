@@ -1,4 +1,5 @@
 import uuid
+from contextlib import contextmanager
 
 from azure.storage.blob import BlobServiceClient
 from smbprotocol.connection import Connection
@@ -16,11 +17,31 @@ def _get_secret(secret_name: str) -> str:
     secret_client = SecretClient(vault_url=key_vault_url, credential=credential)
     return secret_client.get_secret(secret_name).value
 
-azure_container_name =_get_secret("fhirlite-container-name") 
+
+@contextmanager
+def smb_connection_context(server: str, username: str, password: str, share: str, relative_path: str):
+    conn = Connection(uuid.uuid4(), server, 445)
+    conn.connect()
+    session = Session(conn, username=username, password=password)
+    session.connect()
+    tree = TreeConnect(session, fr"\\{server}\{share}")
+    tree.connect()
+    file_open = Open(tree, relative_path)
+    try:
+        file_open.create(
+            impersonation_level=ImpersonationLevel.Impersonation,
+            desired_access=FilePipePrinterAccessMask.GENERIC_READ,
+            file_attributes=0,
+            share_access=ShareAccess.FILE_SHARE_READ,
+            create_disposition=CreateDisposition.FILE_OPEN,
+            create_options=CreateOptions.FILE_NON_DIRECTORY_FILE,
+        )
+        yield file_open
+    finally:
+        file_open.close()
 
 
 def read_file_from_server(full_path: str) -> bytes:
-    # Extract share and relative path
     path_parts = full_path.strip("\\").split("\\")
     share = path_parts[1]
     relative_path = "\\".join(path_parts[2:])
@@ -28,27 +49,10 @@ def read_file_from_server(full_path: str) -> bytes:
     smb_username = _get_secret("dev-fileshare-username")
     smb_password = _get_secret("dev-fileshare-password")
 
-    conn = Connection(uuid.uuid4(), smb_server, 445)
-    conn.connect()
-    session = Session(conn, username=smb_username, password=smb_password)
-    session.connect()
-    tree = TreeConnect(session, fr"\\{smb_server}\{share}")
-    tree.connect()
-    
+    with smb_connection_context(smb_server, smb_username, smb_password, share, relative_path) as file_open:
+        file_data = file_open.read(0, file_open.end_of_file)
 
-    file_open = Open(tree, relative_path)
-    file_open.create(
-            impersonation_level=ImpersonationLevel.Impersonation,
-            desired_access=FilePipePrinterAccessMask.GENERIC_READ,
-            file_attributes=0,
-            share_access=ShareAccess.FILE_SHARE_READ,
-            create_disposition=CreateDisposition.FILE_OPEN,
-            create_options=CreateOptions.FILE_NON_DIRECTORY_FILE)
-            
-    file_data = file_open.read(0, file_open.end_of_file)
-    file_open.close()
     return file_data
-
 
 def upload_to_blob(file_bytes: bytes, blob_path: str):
     azure_storage_connection_string = _get_secret("storageacct-sce1dvstorum001-connstring")
