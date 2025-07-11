@@ -107,7 +107,7 @@ datetime_now = map_datetime_str(datetime.datetime.now(datetime.timezone.utc))
 
 for row in records:
     result = call_http_api(row)
-    if result["status"] == "success":
+    if result[0] == "success":
         success_rows.append({
             "carepro_AuthrequestId": row["carepro_AuthrequestId"],
             "carepro_DocumentId": row["carepro_DocumentId"],
