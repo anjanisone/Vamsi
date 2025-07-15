@@ -1,6 +1,7 @@
 import uuid
 import os
 import re
+import hashlib
 from contextlib import contextmanager
 from azure.storage.blob import BlobServiceClient
 from smbprotocol.connection import Connection
@@ -81,6 +82,9 @@ def blob_upload_context(blob_path: str, storage_conn: str, container_name: str):
     blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_path)
     yield blob_client
 
+def compute_sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
 def read_file_from_server_cached(full_path: str, secrets: dict) -> bytes:
     path_parts = full_path.strip("\\").split("\\")
     share = path_parts[1]
@@ -89,5 +93,10 @@ def read_file_from_server_cached(full_path: str, secrets: dict) -> bytes:
         return file_open.read(0, file_open.end_of_file)
 
 def upload_to_blob_cached(file_bytes: bytes, blob_path: str, secrets: dict):
+    original_hash = compute_sha256(file_bytes)
     with blob_upload_context(blob_path, secrets["storage_conn"], secrets["container"]) as blob_client:
         blob_client.upload_blob(file_bytes, overwrite=True)
+        downloaded_blob = blob_client.download_blob().readall()
+        downloaded_hash = compute_sha256(downloaded_blob)
+    if original_hash != downloaded_hash:
+        raise ValueError(f"Hash mismatch: upload failed or corrupted. Original: {original_hash}, Uploaded: {downloaded_hash}")
