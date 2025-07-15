@@ -1,12 +1,8 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, concat_ws, lit
 import datetime
-from smb_blob_utils import (
-    validate_smb_path,
-    _get_secret,
-    read_file_from_server_cached,
-    upload_to_blob_cached
-)
+import requests
+import os
 
 spark = SparkSession.builder.appName("SFTPBlobRetryMerge").getOrCreate()
 
@@ -14,6 +10,8 @@ INPUT_PATH = "Tables/dbo/document"
 SUCCESS_PATH = "Tables/dbo/document_success"
 FAILURE_PATH = "Tables/dbo/document_failure"
 FAILURE_REASON_PATH = "Tables/dbo/document_failure_details"
+
+AZURE_FUNCTION_URL = os.getenv("AZURE_FUNCTION_UPLOAD_URL", "http://localhost:7071/api/sftp-to-blob-copy-file")
 
 input_df = spark.read.format("delta").load(INPUT_PATH)
 fail_df = spark.read.format("delta").load(FAILURE_PATH)
@@ -41,34 +39,28 @@ final_df = new_files_df.unionByName(retryable_df)
 
 records = final_df.toPandas().to_dict(orient="records")
 
-secrets = {
-    "storage_conn": _get_secret("storageacct-sce1dvstorum001-connstring"),
-    "container": _get_secret("fhirlite-container-name"),
-    "smb_server": _get_secret("dev-fileshare-server"),
-    "smb_username": _get_secret("dev-fileshare-username"),
-    "smb_password": _get_secret("dev-fileshare-password"),
-}
-
 datetime_now = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
 success_rows, fail_for_merge, fail_reason_logs = [], [], []
 
 for row in records:
     try:
-        validate_smb_path(row["full_path"])
-        file_bytes = read_file_from_server_cached(row["full_path"], secrets)
-        blob_key = row["full_path"].replace("\\", "/").lstrip("\\")
-        upload_to_blob_cached(file_bytes, blob_key, secrets)
-
-        success_rows.append({
-            "carepro_AuthrequestId": row["carepro_AuthrequestId"],
-            "carepro_DocumentId": row["carepro_DocumentId"],
-            "full_path": row["full_path"],
-            "azure_blob_path": blob_key,
-            "execution_time_ms": 0,
-            "Date_Created": datetime_now,
-            "Date_updated": datetime_now
-        })
+        payload = {"file_path": row["full_path"]}
+        response = requests.post(AZURE_FUNCTION_URL, json=payload)
+        if response.status_code == 200:
+            response_data = response.json()
+            blob_path = response_data.get("azure_blob_path", "")
+            success_rows.append({
+                "carepro_AuthrequestId": row["carepro_AuthrequestId"],
+                "carepro_DocumentId": row["carepro_DocumentId"],
+                "full_path": row["full_path"],
+                "azure_blob_path": blob_path,
+                "execution_time_ms": 0,
+                "Date_Created": datetime_now,
+                "Date_updated": datetime_now
+            })
+        else:
+            raise Exception(f"Upload failed: {response.text}")
 
     except Exception as e:
         fail_for_merge.append({
