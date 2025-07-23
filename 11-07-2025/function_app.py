@@ -42,8 +42,8 @@ def sftp_to_blob_copy_file_http_function(req: func.HttpRequest) -> func.HttpResp
         file_name = os.path.basename(file_path)
         blob_path = f"FHIRLite/{file_name}"
 
-        file_data = read_file_from_server_cached(file_path, secrets)
-        upload_to_blob_cached(file_data, blob_path, secrets)
+        with read_file_from_server_stream(file_path, secrets) as file_stream:
+            upload_to_blob_streamed(file_stream, blob_path, secrets)
 
         response = {
             "status": "Success",
