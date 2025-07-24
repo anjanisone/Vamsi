@@ -33,11 +33,22 @@ def get_secrets(secret_name: str) -> str:
         _secret_cache[secret_name] = client.get_secret(secret_name).value
     return _secret_cache[secret_name]
 
+def validate_smb_path(full_path: str) -> None:
+    pattern_auth = os.getenv("SMB_ALLOWED_PATH_REGEX_AUTHORIZATIONREQUEST", "")
+    pattern_serv = os.getenv("SMB_ALLOWED_PATH_REGEX_SERVICEREQUEST", "")
 
-def validate_smb_path(path: str) -> None:
-    """Ensure SMB path follows UNC format."""
-    if not re.match(r"^\\\\[^\\]+(\\[^\\]+)+$", path):
-        raise ValueError(f"Invalid SMB file path: {path}")
+    regex_patterns = [rf"{pattern_auth}", rf"{pattern_serv}"]
+    regex_patterns = [p for p in regex_patterns if p.strip()]
+
+    if not regex_patterns:
+        raise RuntimeError("No valid SMB path regex patterns found in environment variables.")
+
+    normalized_path = full_path.strip()
+    for pattern in regex_patterns:
+        if re.match(pattern, normalized_path, re.IGNORECASE):
+            return
+
+    raise ValueError(f"Provided path '{full_path}' does not match allowed SMB path patterns.")
 
 
 @contextmanager
