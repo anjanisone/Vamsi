@@ -133,16 +133,12 @@ def stream_file_to_blob(
             original_hash = sha256_hash.hexdigest()
 
             if downloaded_size != file_size or downloaded_hash != original_hash:
-                logger.warning("Upload validation failed. Deleting blob.")
                 blob_client.delete_blob()
-                return {
-                    "success": False,
-                    "error": "Upload failed validation. Blob deleted.",
-                    "expected_size": file_size,
-                    "actual_size": downloaded_size,
-                    "expected_hash": original_hash,
-                    "actual_hash": downloaded_hash,
-                }
+                raise RuntimeError(
+                    f"Upload failed validation for blob '{blob_path}'. "
+                    f"Expected size: {file_size}, actual: {downloaded_size}. "
+                    f"Expected hash: {original_hash}, actual: {downloaded_hash}."
+                )
 
             duration = time.time() - start_time
             return {
