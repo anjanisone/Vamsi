@@ -59,7 +59,7 @@ def stream_file_to_blob(
     container_name: str,
     blob_path: str,
     connection_string: str,
-    chunk_size: int = 4 * 1024 * 1024,
+    chunk_size: int = 1024 * 1024,
 ) -> dict:
     """
     Streams file from SMB to Azure Blob using generator,
