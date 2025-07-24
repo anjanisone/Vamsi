@@ -187,3 +187,24 @@ if fail_for_merge:
             target.Date_updated = source.Date_updated
         WHEN NOT MATCHED THEN INSERT *
     """)
+
+#if success_rows:
+#     reprocess_df = spark.createDataFrame([{
+#         "carepro_AuthrequestId": row["carepro_AuthrequestId"],
+#         "carepro_DocumentId": row["carepro_DocumentId"],
+#         "full_path": row["full_path"],
+#         "retry_count": 0,  # unchanged
+#         "reprocess_success": 1,
+#         "Date_updated": datetime_now
+#     } for row in success_rows])
+
+#     reprocess_df.createOrReplaceTempView("success_updates")
+
+#     spark.sql(f"""
+#         MERGE INTO delta.`{FAILURE_PATH}` as target
+#         USING success_updates as source
+#         ON target.carepro_AuthrequestId = source.carepro_AuthrequestId AND target.carepro_DocumentId = source.carepro_DocumentId
+#         WHEN MATCHED THEN UPDATE SET
+#             target.reprocess_success = 1,
+#             target.Date_updated = source.Date_updated
+#     """)
