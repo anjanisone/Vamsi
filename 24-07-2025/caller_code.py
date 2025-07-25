@@ -134,16 +134,36 @@ def process_single_record(row):
         fail_reason_logs.append(reason_record)
     return "failure", fail_record
 
-# Execute parallel processing
-print(f"Processing {len(records)} records using {MAX_WORKERS} threads...")
+MAX_WORKERS = 10
+BATCH_SIZE = 20
+SLEEP_BETWEEN_BATCHES = 100
+
+print(f"Processing {len(records)} records in batches of {BATCH_SIZE} using {MAX_WORKERS} threads...\n")
 start = time.time()
 
-with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-    futures = [executor.submit(process_single_record, row) for row in records]
-    for i, future in enumerate(as_completed(futures), start=1):
-        if i % 10 == 0 or i == len(records):
-            with results_lock:
-                print(f"Progress: {i}/{len(records)} - Success: {len(success_rows)}, Failed: {len(fail_for_merge)}")
+for batch_start in range(0, len(records), BATCH_SIZE):
+    batch = records[batch_start:batch_start + BATCH_SIZE]
+    print(f"Starting batch {batch_start // BATCH_SIZE + 1} ({len(batch)} records)")
+
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = [executor.submit(process_single_record, row) for row in batch]
+
+        for i, future in enumerate(as_completed(futures), start=1):
+            result = future.result()
+            if result[0] == "success":
+                with results_lock:
+                    success_rows.append(result[1])
+            else:
+                with results_lock:
+                    fail_for_merge.append(result[1])
+                    fail_reason_logs.append(result[2])
+
+            if i % 10 == 0 or i == len(batch):
+                with results_lock:
+                    print(f"  Progress: {i}/{len(batch)} - Success: {len(success_rows)}, Failed: {len(fail_for_merge)}")
+
+    print(f"Batch {batch_start // BATCH_SIZE + 1} completed. Sleeping for {SLEEP_BETWEEN_BATCHES} seconds...\n")
+    time.sleep(SLEEP_BETWEEN_BATCHES)
 
 duration = time.time() - start
 print(f"\nProcessing completed in {duration:.2f} seconds")
@@ -153,14 +173,12 @@ if records:
     print(f"Success rate: {(len(success_rows) / len(records)) * 100:.2f}%")
     print(f"Throughput: {len(records) / duration:.2f} records/sec")
 
-# Save successes
 if success_rows:
     spark.createDataFrame(success_rows) \
         .withColumn("Date_Created", current_timestamp()) \
         .withColumn("Date_Updated", current_timestamp()) \
         .write.format("delta").mode("append").save(SUCCESS_PATH)
 
-# Save failure reasons
 if fail_reason_logs:
     spark.createDataFrame(fail_reason_logs) \
         .withColumn("Date_Created", current_timestamp()) \
@@ -168,7 +186,6 @@ if fail_reason_logs:
         .withColumn("error_code", col("error_code").cast(IntegerType())) \
         .write.format("delta").mode("append").save(FAILURE_REASON_PATH)
 
-# Merge failures into failure table
 if fail_for_merge:
     df_fail_merge = spark.createDataFrame(fail_for_merge)
     df_fail_merge.createOrReplaceTempView("incoming_failures")
