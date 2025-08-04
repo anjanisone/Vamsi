@@ -1,0 +1,22 @@
+Changes Made and Justifications
+	1.	Replaced all print() statements with logger.info()
+	•	To enable structured, thread-safe logging suitable for production and easier debugging.
+	2.	Introduced sys.exit(0) in all except blocks
+	•	Ensures immediate termination on failure, preventing the process from continuing after critical errors.
+	3.	Replaced .collect() with .toLocalIterator()
+	•	Optimized memory usage by streaming rows one at a time, avoiding driver OOM issues during large dataset processing.
+	4.	Maintained function naming conventions
+	•	Ensured consistency and alignment with existing references and expected entry points.
+	5.	Used thread-local requests.Session()
+	•	Improved performance by reusing HTTP connections and isolating sessions per thread to prevent concurrency issues.
+	6.	Configured centralized logging format
+	•	Standardized log output with timestamps and levels, improving traceability and monitoring capabilities.
+	7.	Retained retry strategy using Tenacity
+	•	Preserved robust retry mechanism with exponential backoff for transient API or network failures.
+	8.	Grouped constants under a configuration class
+	•	Organized parameters like API URLs and thread limits for better readability and easier maintenance.
+	9.	Handled exceptions explicitly in thread execution blocks
+	•	Captured and exited on any threading errors to avoid silent failures during concurrent processing.
+	10.	Validated all improvements through test runs with large input volume
+
+	•	Verified correctness and performance improvements using production-scale batch sizes and record volumes.
