@@ -58,6 +58,11 @@ def get_parser() -> ArgumentParser:
         help="Disable document copy via Azure Function",
     )
     parser.add_argument(
+        "--generate_additional_records",
+        action=BooleanOptionalAction,
+        help="Multiply the existing records by 99",
+    )
+    parser.add_argument(
         "--disable_events",
         action=BooleanOptionalAction,
         help="Disable sending events to Event Hub",
@@ -150,6 +155,10 @@ def main() -> None:
             "Document copying DISABLED (--disable_documentcopy_process is specified)"
         )
 
+    #-----
+    if args.generate_additional_records:
+        generate_additional_rows()
+    #-----
     # Submit authorization data to FHIR
     asyncio.run(
         submit_auth_to_fhir(
@@ -175,4 +184,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+
     main()
