@@ -73,7 +73,7 @@ def sftp_to_blob_copy_file_http_function(req: func.HttpRequest) -> func.HttpResp
     except Exception as e:
         logging.exception("Error in file copy function")
         return func.HttpResponse(
-            json.dumps({"status": "Failed", "status_code": 500, "message": str(e)}),
+            json.dumps({"status": "Failed", "status_code": 500, "message": "Unknown Error" if not e else e}),
             status_code=500,
             mimetype="application/json"
         )
